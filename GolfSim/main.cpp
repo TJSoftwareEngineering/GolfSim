@@ -71,17 +71,25 @@ vector<club> clubs;
 
 class swing {
 public:
-	float speed;
+	float clubSpeed;
+	float ballSpeed;
 	float attackAngle;
 	float faceAngle;
 	float path;
 	float smash;
 	float loftMod = 0.0;
-	swing(float speedIn, float angleIn, float pathIn, float smashIn) {
-		speed = speedIn;
+	float launchAngle = 0.0;
+	float spin = 0.0;
+
+	swing(float speedIn, float smashIn, float launchIn, float angleIn, float pathIn, float spinIn) {
+		clubSpeed = speedIn;
 		attackAngle = angleIn;
+		launchAngle = launchIn;
 		path = pathIn;
 		smash = smashIn;
+		spin = spinIn;
+
+		ballSpeed = clubSpeed * smash;
 	}
 };
 
@@ -92,19 +100,19 @@ public:
 	float massKG = .0456;
 	float massG = 45.6;
 	float area = 3.14159265 * (radM * radM);
-	float coLift = .71;//.45
-	float coDrag = .55;//.63
+	float coLift = .54;//.45
+	float coDrag = .48;//.63
 	float spin = 0.0;
 	float calcSpin(swing swingIn, club clubIn) {
 		cout << "angle" << endl;
 		cout << clubIn.attack << endl;
-		return swingIn.speed*(clubIn.loft+swingIn.loftMod-clubIn.attack)*clubIn.spinMod;
+		return swingIn.clubSpeed*(clubIn.loft+swingIn.loftMod-clubIn.attack)*clubIn.spinMod;
 	}
 };
 
 class shot {
 public:
-	point path3D[1000];
+	vector<point> path3D;
 	float maxHeight = 0.0;
 	float distance = 0.0;
 	float curve = 0.0;
@@ -123,7 +131,7 @@ void loadClubData() {
 
 		vector<string> row;
 		string line, seg, temp, name;
-		float loft, smash, spin, attack;
+		float loft, smash, spin, attack, loftMod;
 
 
 		while (fin.good()) {
@@ -135,8 +143,10 @@ void loadClubData() {
 			smash = std::stof(line);
 			getline(fin, line, ',');
 			spin = std::stof(line);
-			getline(fin, line, '\n');
+			getline(fin, line, ',');
 			attack = std::stof(line);
+			getline(fin, line, '\n');
+			loftMod = std::stof(line);
 			cout << name << " " << loft << " " << smash << " " << spin << " " << endl;
 			clubs.emplace_back(club(name, loft, smash, spin, attack));
 
@@ -156,7 +166,7 @@ void loadClubData() {
 //Basic simulation - No drag/lift 
 shot simulateBasic(shot shotIn, swing swingIn, club clubIn, climate climateIn) {
 	float degToRad = 3.1415926 / 180.0;
-	float velocityInit = swingIn.speed*clubIn.smash*.44704;
+	float velocityInit = swingIn.ballSpeed*.44704;
 	float angleInit = (clubIn.loft-swingIn.loftMod+swingIn.attackAngle)*degToRad;
 	cout << "Initial Velocity: " << velocityInit << " m/s" << endl;
 	cout << "Initial angle: " << clubIn.loft-swingIn.loftMod+swingIn.attackAngle << " deg (" << angleInit << " rad)" << endl;
@@ -193,19 +203,14 @@ shot simulateBasic(shot shotIn, swing swingIn, club clubIn, climate climateIn) {
 shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate climateIn) {
 	//Calculate launch angle and speed
 	float degToRad = 3.1415926 / 180.0;
-	float velocityInit = swingIn.speed * clubIn.smash * .44704;
-	//float angleInit = (clubIn.loft - swingIn.loftMod + swingIn.attackAngle) * degToRad;
-	float angleInit = (cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack * 2) * degToRad;
+	float velocityInit = swingIn.ballSpeed * .44704;
+	//float angleInitDeg = (cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack*2.0);
+	float angleInitDeg = swingIn.launchAngle;
+	float angleInit = angleInitDeg * degToRad;
 
-	float spinRPM = ballIn.calcSpin(swingIn, clubIn);
-	cout << spinRPM << endl;
-
-	//output info to console
-	cout << "Initial Velocity: " << velocityInit << " m/s" << endl;
-	cout << "Initial angle: " << cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack * 2 << " deg (" << angleInit << " rad)" << endl;
-	//cout << "Position" << endl;
-	//cout << "  x        y" << endl;
-	//cout << "-----------------------" << endl;
+	float spinRPM = swingIn.spin;
+	float coLift = ballIn.coLift + spinRPM / 40000.0;
+	float coDrag = ballIn.coDrag +spinRPM / 60000.0;
 
 	//Temporary variables
 	float tempX = 0.0, tempY = 0.0, time = 0.0, heightMax = 0.0, xChange = 0.0, yChange = 0.0;
@@ -230,8 +235,8 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		vLength = sqrt(vSquare);
 
 		gravForce = climateIn.gravity * ballIn.massKG;
-		liftForce = (.5 * climateIn.airDensity * ballIn.area * (ballIn.coLift + (spinRPM / 40000.0)))/ ballIn.massKG * (vLength/(1.0+count/10.0));
-		dragForce = (.5 * climateIn.airDensity * ballIn.area * (ballIn.coDrag + (spinRPM / 50000.0)))/ ballIn.massKG * vLength;
+		liftForce = (.5 * climateIn.airDensity * ballIn.area * coLift) / ballIn.massKG * (vLength / (1.0 + count / 10.0));
+		dragForce = (.5 * climateIn.airDensity * ballIn.area * coDrag)/ ballIn.massKG * vLength;
 		
 
 		//Calculate velocity change
@@ -243,7 +248,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		yVelocity += yChange * timeDelta / ballIn.massKG;
 
 		//store ball position
-		shotIn.path3D[count] = point(0.0, tempY, tempX);
+		shotIn.path3D.emplace_back(point(0.0, tempY, tempX));
 		//step time interval
 		time += timeDelta;
 
@@ -273,30 +278,37 @@ int main() {
 	shot shot1, shot2;
 	climate climate1 = climate(75.0, 1.2, 0.0, 0.0);
 	vector<swing> swings;
-	swings.emplace_back(swing(113.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(107.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(103.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(101.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(100.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(98.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(96.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(94.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(92.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(90.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(87.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(85.0, 0.0, 0.0, 1.48));
-	swings.emplace_back(swing(83.0, 0.0, 0.0, 1.48));
-	//club club1(clubs[12]);
+
+	// swing(float speedIn, float smashIn, float launchIn, float angleIn, float pathIn, float spinIn)
+	//driver
+	swings.emplace_back(swing(113.0, 1.48, 10.9, -1.3, 0.0, 2686.0));
+	//woods
+	swings.emplace_back(swing(107.0, 1.48, 9.2, -2.9, 0.0, 3655.0));
+	swings.emplace_back(swing(103.0, 1.47, 9.4, -3.3, 0.0, 4350.0));
+	swings.emplace_back(swing(101.0, 1.46, 10.0, -3.4, 0.0, 4400.0));
+	//hybrid
+	swings.emplace_back(swing(100.0, 1.46, 10.2, -3.5, 0.0, 4437.0));
+	//irons
+	swings.emplace_back(swing(98.0, 1.45, 10.4, -3.1, 0.0, 4630.0));
+	swings.emplace_back(swing(96.0, 1.43, 11.0, -3.4, 0.0, 4836.0));
+	swings.emplace_back(swing(94.0, 1.41, 12.1, -3.7, 0.0, 5361.0));
+	swings.emplace_back(swing(92.0, 1.38, 14.1, -4.1, 0.0, 6231.0));
+	swings.emplace_back(swing(90.0, 1.33, 16.3, -4.3, 0.0, 7097.0));
+	swings.emplace_back(swing(87.0, 1.32, 18.1, -4.5, 0.0, 7998.0));
+	swings.emplace_back(swing(85.0, 1.28, 20.4, -4.7, 0.0, 8647.0));
+	swings.emplace_back(swing(83.0, 1.23, 24.2, -5.0, 0.0, 9304.0));
+
 	ball ball1;
 
-	//shot1 = simulateBasic(shot1, swing1, club1, climate1);
-	//shot2 = simulate(shot1, swing1, club1, ball1, climate1);
 
 	//temporary stat display
 
 	for (int i = 0; i < 13;i++) {
 		shot2 = simulate(shot1, swings[i], clubs[i], ball1, climate1);
 		cout << "---------- " << clubs[i].name << " ------------ " << endl;
+		cout << "Ball speed: " << swings[i].ballSpeed << " m/s" << endl;
+		cout << "launch Angle: " << swings[i].launchAngle << " deg" << endl;
+		cout << "Spin: " << swings[i].spin << " rpm" << endl;
 		cout << "Flight time: " << shot2.time << " seconds" << endl;
 		cout << "Distance: " << shot2.distance << " m" << endl;
 		cout << "Max Height: " << shot2.maxHeight << " m" << endl;
