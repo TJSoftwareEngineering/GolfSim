@@ -35,6 +35,7 @@ public:
 // simulator classes ----
 class climate {
 public:
+
 	float temperature = 100.0; // deg F
 	float gravity = 9.8;
 	float airDensity = 1.2;
@@ -113,6 +114,23 @@ public:
 	}
 };
 
+class ball {
+public:
+	float radM = .020574;
+	float radCM = 2.0574;
+	float massKG = .0456;
+	float massG = 45.6;
+	float area = 3.14159265 * (radM * radM);
+	float coLift = .71;//.45
+	float coDrag = .55;//.63
+	float spin = 0.0;
+	float calcSpin(swing swingIn, club clubIn) {
+		cout << "angle" << endl;
+		cout << clubIn.attack << endl;
+		return swingIn.speed*(clubIn.loft+swingIn.loftMod-clubIn.attack)*clubIn.spinMod;
+	}
+};
+
 class shot {
 public:
 	vector<point> path3D;
@@ -173,6 +191,7 @@ void loadClubData() {
 //Basic simulation - No drag/lift 
 shot simulateBasic(shot shotIn, swing swingIn, club clubIn, climate climateIn) {
 	float degToRad = 3.1415926 / 180.0;
+
 	float velocityInit = swingIn.ballSpeed * .44704;
 	float angleInit = (clubIn.loft - swingIn.loftMod + swingIn.attackAngle) * degToRad;
 	cout << "Initial Velocity: " << velocityInit << " m/s" << endl;
