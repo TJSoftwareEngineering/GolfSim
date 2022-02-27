@@ -18,6 +18,8 @@ using std::string;
 using std::vector;
 
 #include <SFML/Graphics.hpp>
+#include <imgui.h>
+#include <imgui-SFML.h>
 
 // classes --------------------------------------------------------------------
 // primatives -------
@@ -341,32 +343,54 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 
 int main() {
 
-	sf::RenderWindow window(sf::VideoMode(800, 600), "Window Title");
-	sf::CircleShape shape(150.0, 100);
-	shape.setFillColor(sf::Color(80, 135, 30)); // Color circle
-	shape.setPosition(200, 100); // Center circle
-
-
-
-
-	while (window.isOpen()) {
-		sf::Event event;
-		while (window.pollEvent(event)) {
-			if (event.type == sf::Event::Closed) {
-				window.close();
-			}
-		}
-
-		window.clear(sf::Color(30, 40, 30)); // Color background
-		window.draw(shape);
-		window.display();
-	}
-
 	loadClubData();
 
 	shot shot1, shot2;
 	climate climate1 = climate(100.0, 1.2, 0.0, -45.0);
 	vector<swing> swings;
+
+
+	//Create window
+	sf::RenderWindow window(sf::VideoMode(800, 600), "Window Title");
+	ImGui::SFML::Init(window);
+	sf::Clock deltaClock;
+
+	//test shape
+	sf::CircleShape shape(150.0, 100);
+	shape.setFillColor(sf::Color(80, 135, 30)); // Color circle
+	shape.setPosition(200, 100); // Center circle
+
+	// Window render loop
+	while (window.isOpen()) {
+
+		//update
+		sf::Event event;
+		while (window.pollEvent(event)) {
+			ImGui::SFML::ProcessEvent(event);
+			if (event.type == sf::Event::Closed) {
+				window.close();
+			}
+		}
+
+		ImGui::SFML::Update(window, deltaClock.restart());
+		//Input window
+		ImGui::Begin("Input");
+		ImGui::Text("Swing Variables:");
+		ImGui::SliderFloat("Temp", &climate1.temperature, 0.0F, 120.0F);
+		ImGui::End();
+		//Stat window
+		ImGui::Begin("Stats");
+		ImGui::Text("Shot Info:");
+		ImGui::End();
+		//clear and draw
+
+		window.clear(sf::Color(30, 40, 30)); // Color background
+		window.draw(shape);
+		ImGui::SFML::Render(window);
+		window.display();
+	}
+
+
 
 	// swing(float speedIn, float smashIn, float launchIn, float angleIn, float pathIn, float spinIn)
 	//driver
@@ -407,6 +431,6 @@ int main() {
 		cout << "Total curve: " << shot2.curveTotal << " m" << endl;
 	}
 
-
+	ImGui::SFML::Shutdown();
 	system("pause>0");
 }
