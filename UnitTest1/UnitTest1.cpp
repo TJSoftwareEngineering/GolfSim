@@ -2,6 +2,7 @@
 #include "CppUnitTest.h"
 #include "../GolfSim/main.cpp"
 
+
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTest1
