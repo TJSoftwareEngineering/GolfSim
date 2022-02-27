@@ -70,6 +70,7 @@ public:
 	club() {
 
 	}
+
 };
 //array to store clubs
 vector<club> clubs;
@@ -255,6 +256,10 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		tempY += yVelocity * timeDelta;
 		tempX += xVelocity * timeDelta;
 
+		//if no movement set ball to rest
+		if (oldZ == tempZ) {
+			zVelocity = 0.0;
+		}
 
 		//Bounce if impacting ground
 		if (tempY <= 0.0) {
