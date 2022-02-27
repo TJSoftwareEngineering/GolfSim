@@ -96,7 +96,9 @@ public:
 		spinAxis = spinAxisIn;
 		smash = smashIn;
 		spin = spinIn;
+	}
 
+	void calcBallSpeed() {
 		ballSpeed = clubSpeed * smash;
 	}
 };
@@ -123,6 +125,7 @@ public:
 class shot {
 public:
 	vector<point> path3D;
+	float ballSpeed = 0.0;
 	float maxHeight = 0.0;
 	float distance = 0.0;
 	float curveInAir = 0.0;
@@ -216,8 +219,10 @@ shot simulateBasic(shot shotIn, swing swingIn, club clubIn, climate climateIn) {
 //Full simulation
 shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate climateIn) {
 	//Calculate launch angle and speed
+	swingIn.calcBallSpeed();
 	float degToRad = 3.1415926 / 180.0;
 	float velocityInit = swingIn.ballSpeed * .44704;
+	shotIn.ballSpeed = swingIn.ballSpeed;
 	//float angleInitDeg = (cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack*2.0);
 	float angleInitDeg = swingIn.launchAngle;
 	float angleInit = angleInitDeg * degToRad;
@@ -345,13 +350,15 @@ int main() {
 
 	loadClubData();
 
-	shot shot1, shot2;
+	shot shot1, shot2, lastShot;
 	climate climate1 = climate(100.0, 1.2, 0.0, -45.0);
+	swing swing1 = swing(120.0, 1.48, 12.0, 0.0, -3.0, 2300.0);
+	ball ball1;
 	vector<swing> swings;
 
 
 	//Create window
-	sf::RenderWindow window(sf::VideoMode(800, 600), "Window Title");
+	sf::RenderWindow window(sf::VideoMode(1280, 768), "Golf Simulator - Pennstate Capstone");
 	ImGui::SFML::Init(window);
 	sf::Clock deltaClock;
 
@@ -373,14 +380,41 @@ int main() {
 		}
 
 		ImGui::SFML::Update(window, deltaClock.restart());
-		//Input window
-		ImGui::Begin("Input");
-		ImGui::Text("Swing Variables:");
-		ImGui::SliderFloat("Temp", &climate1.temperature, 0.0F, 120.0F);
+		//swing window
+		ImGui::Begin("Swing Data");
+		ImGui::Text("\nSwing Variables:");
+		ImGui::SliderFloat("Swing Speed (mph)", &swing1.clubSpeed, 0.0F, 150.0F);
+		ImGui::SliderFloat("Smash Factor", &swing1.smash, 0.0F, 1.5F);
+		ImGui::SliderFloat("Launch angle (deg)", &swing1.launchAngle, 0.0F, 89.0F);
+		ImGui::SliderFloat("Spin (rpm)", &swing1.spin, 0.0F, 15000.0F);
+		ImGui::SliderFloat("Spin axis (deg)", &swing1.spinAxis, -20.0F, 20.0F);
+		ImGui::Text("\n");
+		ImGui::Separator();
+		ImGui::Text("\nClimate Variables:");
+		ImGui::BulletText("Sections below are demonstrating many aspects of the library.");
+		ImGui::SliderFloat("Temperature (f)", &climate1.temperature, 0.0F, 120.0F);
+		ImGui::SliderFloat("Wind Speed (m/s)", &climate1.windSpeed, 0.0F, 40.0F);
+		ImGui::SliderFloat("Wind Direction (deg)", &climate1.windDirection, 0.0F, 40.0F);
+		ImGui::Text("\n");
+		ImGui::Separator();
+		ImGui::Text("\n");
+		if (ImGui::Button("Simulate")) {
+			lastShot = simulate(lastShot, swing1, clubs[0], ball1, climate1);
+		}
 		ImGui::End();
+		//climate window
+
 		//Stat window
 		ImGui::Begin("Stats");
 		ImGui::Text("Shot Info:");
+		ImGui::Text("temp: %f", climate1.temperature);
+		ImGui::Text("Carry Distance: %f", lastShot.carryDist);
+		ImGui::Text("Total Distance: %f", lastShot.totalDist);
+
+		ImGui::Text("Offline Distance: %f", lastShot.totalDist);
+		ImGui::Text("Flight time (s): %f", lastShot.timeInAir);
+		ImGui::Text("Total time (s): %f", lastShot.timeTotal);
+		ImGui::Text("test", 123);
 		ImGui::End();
 		//clear and draw
 
@@ -411,7 +445,7 @@ int main() {
 	swings.emplace_back(swing(85.0, 1.28, 20.4, -4.7, 0.0, 8647.0));
 	swings.emplace_back(swing(83.0, 1.23, 24.2, -5.0, 2.0, 9304.0));
 
-	ball ball1;
+
 
 
 	//temporary stat display
@@ -419,7 +453,7 @@ int main() {
 	for (int i = 0; i < 13; i++) {
 		shot2 = simulate(shot1, swings[i], clubs[i], ball1, climate1);
 		cout << "---------- " << clubs[i].name << " ------------ " << endl;
-		cout << "Ball speed: " << swings[i].ballSpeed << " m/s" << endl;
+		cout << "Ball speed: " << shot2.ballSpeed << " mph" << endl;
 		cout << "launch Angle: " << swings[i].launchAngle << " deg" << endl;
 		cout << "Spin: " << swings[i].spin << " rpm" << endl;
 		cout << "Flight time: " << shot2.timeInAir << " seconds" << endl;
