@@ -1,26 +1,39 @@
 #include "pch.h"
 #include "CppUnitTest.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+using std::cout;
+using std::cin;
+using std::endl;
+using std::cos;
+using std::sin;
+using std::fstream;
+using std::string;
+using std::vector;
 
-#include "../GolfSim/point.h"
-#include "../GolfSim/climate.h"
-#include "../GolfSim/club.h"
-#include "../GolfSim/swing.h"
-#include "../GolfSim/ball.h"
-#include "../GolfSim/shot.h"
-#include "../GolfSim/simulator.h"
-
+#include "..\golfsim\point.h"
+#include "..\golfsim\climate.h"
+#include "..\golfsim\club.h"
+#include "..\golfsim\swing.h"
+#include "..\golfsim\ball.h"
+#include "..\golfsim\shot.h"
+#include "..\golfSim\utilityfunctions.h"
+#include "..\golfsim\simulator.h"
 
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace UnitTest1
+namespace UnitTest01
 {
-	TEST_CLASS(UnitTest1)
+	TEST_CLASS(UnitTest01)
 	{
 	public:
 		
-		climate testClimate = climate(100.0, 1.2, 0, 0);
+		climate testClimate = climate(100.0, 0, 0, 0);
 		ball testBall = ball();
 		club testClub = club();
 		shot testShot = shot();
@@ -31,7 +44,7 @@ namespace UnitTest1
 			float expectedCurve = 3.0;
 			swing testSwing = swing(96.0, 1.43, 11.0, -3.4, 2.0, 4836.0);
 			testShot = simulate(testShot, testSwing, testClub, testBall, testClimate);
-			Assert::IsTrue(testShot.curveInAir >= (expectedCurve-1.0) && testShot.curveInAir <= (expectedCurve+1.0));
+			Assert::IsTrue(testShot.curveInAir >= (expectedCurve - 1.0) && testShot.curveInAir <= (expectedCurve + 1.0));
 		}
 
 		//Test amount of curve for 10 degree axis tilt
@@ -48,7 +61,7 @@ namespace UnitTest1
 		//results rounded for comparison
 		TEST_METHOD(temperatureTest)
 		{
-			climate testClimate2 = climate(90.0, 1.2, 0, 0);
+			climate testClimate2 = climate(90.0, 0, 0, 0);
 			shot testShot2 = shot();
 			swing wood3 = swing(107.0, 1.48, 9.2, -2.9, 0.0, 3655.0);
 			testShot = simulate(testShot, wood3, testClub, testBall, testClimate);
@@ -57,16 +70,38 @@ namespace UnitTest1
 			int testValue2 = testShot2.carryDist;
 			Assert::AreEqual(testValue1, testValue2);
 		}
+
+		//unit conversion test
+		TEST_METHOD(unitConvertTest)
+		{
+			float expectedYards = 5.0;
+			float meters = 4.572;
+			float yards = metersToYards(meters);
+			Assert::AreEqual(yards, expectedYards, 0.001F);
+		}
+
+		//altitude test
+		//tests 0 alt shot vs 5000ft alt shot for expected change
+		//change is estimated as feet*.00116 = %
+		TEST_METHOD(altitudeTest)
+		{
+			climate testClimate2 = climate(100.0, 5000.0, 0, 0);
+			swing driver = swing(113.0, 1.48, 10.9, -1.3, 0.0, 2686.0); // normal distance 275m
+			shot testShot = simulate(testShot, driver, testClub, testBall, testClimate2);
+			shot testShot2 = simulate(testShot, driver, testClub, testBall, testClimate);
+			float expectedMeters = testShot2.carryDist * (1.0 + 5000.0 * .0000116);
+			Assert::AreEqual(testShot.carryDist, expectedMeters, .001F);
+		}
+
 	};
 
 
-	//Test trackman data input against distance output
-	//Criteria: must be within 5% range of error
-	//output of simulation is converted from meters to yards for comparison
+	//Acceptance test for shot distances 
+	//compared to trackman data with 5% error 
 	TEST_CLASS(acceptanceTest1) {
 
 
-		climate testClimate = climate(100.0, 1.2, 0, 0);
+		climate testClimate = climate(100.0, 0, 0, 0);
 		ball testBall = ball();
 		club testClub = club();
 		shot testShot = shot();
@@ -201,6 +236,77 @@ namespace UnitTest1
 			testLow = expected - expected * error;
 			testValue = testShot.carryDist * 1.0936;
 			Assert::IsTrue(testValue > testLow && testValue < testHigh);
+		}
+
+
+
+
+	};
+
+
+	//Acceptance test for input values and sanitization
+	TEST_CLASS(acceptanceTest2) {
+		climate testClimate = climate(100.0, 0, 0, 0);
+		ball testBall = ball();
+		club testClub = club();
+		shot testShot = shot();
+
+		TEST_METHOD(swingBoundaryLow) {
+
+			swing testSwingBoundLow = swing(-0.1F, -.1F, -.1F, -.1F, -20.1F, -.1F);
+			swing testSwingBoundLowExpected = swing(-0.0F, -0.0F, -0.0F, -0.0F, -20.0F, -0.0F);
+			testSwingBoundLow = sanitizeSwing(testSwingBoundLow);
+			bool passed = true;
+			if (testSwingBoundLow.clubSpeed != testSwingBoundLowExpected.clubSpeed) passed = false;
+			if (testSwingBoundLow.smash != testSwingBoundLowExpected.smash) passed = false;
+			if (testSwingBoundLow.launchAngle != testSwingBoundLowExpected.launchAngle) passed = false;
+			if (testSwingBoundLow.spin != testSwingBoundLowExpected.spin) passed = false;
+			if (testSwingBoundLow.spinAxis != testSwingBoundLowExpected.spinAxis) passed = false;
+
+			Assert::IsTrue(passed);
+		}
+
+		TEST_METHOD(swingBoundaryHigh) {
+
+			swing testSwingBoundLow = swing(150.1F, 1.51F, 90.1F, 100.1F, 20.1F, 15000.1F);
+			swing testSwingBoundLowExpected = swing(150.0F, 1.5F, 90.0F, 100.1F, 20.0F, 15000.0F);
+			testSwingBoundLow = sanitizeSwing(testSwingBoundLow);
+			bool passed = true;
+			if (testSwingBoundLow.clubSpeed != testSwingBoundLowExpected.clubSpeed) passed = false;
+			if (testSwingBoundLow.smash != testSwingBoundLowExpected.smash) passed = false;
+			if (testSwingBoundLow.launchAngle != testSwingBoundLowExpected.launchAngle) passed = false;
+			if (testSwingBoundLow.spin != testSwingBoundLowExpected.spin) passed = false;
+			if (testSwingBoundLow.spinAxis != testSwingBoundLowExpected.spinAxis) passed = false;
+
+			Assert::IsTrue(passed);
+		}
+
+		TEST_METHOD(climateBoundaryLow) {
+
+			climate testClimateBoundLow = climate(-.1F, -.1F, -.1f, -.1f);
+			climate testClimateBoundLowExpected = climate(-0.0F, -0.0F, -0.0f, -0.0f);
+			testClimateBoundLow = sanitizeClimate(testClimateBoundLow);
+			bool passed = true;
+			if (testClimateBoundLow.temperature != testClimateBoundLowExpected.temperature) passed = false;
+			if (testClimateBoundLow.altitude != testClimateBoundLowExpected.altitude) passed = false;
+			if (testClimateBoundLow.windSpeed != testClimateBoundLowExpected.windSpeed) passed = false;
+			if (testClimateBoundLow.windDirection != testClimateBoundLowExpected.windDirection) passed = false;
+
+			Assert::IsTrue(passed);
+		}
+		
+		TEST_METHOD(climateBoundaryHigh) {
+
+			climate testClimateBoundLow = climate(120.1F, 15000.1F, 20.1f, 360.1f);
+			climate testClimateBoundLowExpected = climate(120.0F, 15000.0F, 20.0f, 360.0f);
+			testClimateBoundLow = sanitizeClimate(testClimateBoundLow);
+			bool passed = true;
+			if (testClimateBoundLow.temperature != testClimateBoundLowExpected.temperature) passed = false;
+			if (testClimateBoundLow.altitude != testClimateBoundLowExpected.altitude) passed = false;
+			if (testClimateBoundLow.windSpeed != testClimateBoundLowExpected.windSpeed) passed = false;
+			if (testClimateBoundLow.windDirection != testClimateBoundLowExpected.windDirection) passed = false;
+
+			Assert::IsTrue(passed);
 		}
 
 
