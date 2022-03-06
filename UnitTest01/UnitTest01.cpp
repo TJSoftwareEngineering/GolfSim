@@ -1,22 +1,34 @@
 #include "pch.h"
 #include "CppUnitTest.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+using std::cout;
+using std::cin;
+using std::endl;
+using std::cos;
+using std::sin;
+using std::fstream;
+using std::string;
+using std::vector;
 
-#include "../GolfSim/point.h"
-#include "../GolfSim/climate.h"
-#include "../GolfSim/club.h"
-#include "../GolfSim/swing.h"
-#include "../GolfSim/ball.h"
-#include "../GolfSim/shot.h"
-#include "../GolfSim/simulator.h"
-
-
+#include "..\golfsim\point.h"
+#include "..\golfsim\climate.h"
+#include "..\golfsim\club.h"
+#include "..\golfsim\swing.h"
+#include "..\golfsim\ball.h"
+#include "..\golfsim\shot.h"
+#include "..\golfsim\simulator.h"
+#include "..\golfSim\utilityfunctions.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace UnitTest1
+namespace UnitTest01
 {
-	TEST_CLASS(UnitTest1)
+	TEST_CLASS(UnitTest01)
 	{
 	public:
 		
@@ -31,7 +43,7 @@ namespace UnitTest1
 			float expectedCurve = 3.0;
 			swing testSwing = swing(96.0, 1.43, 11.0, -3.4, 2.0, 4836.0);
 			testShot = simulate(testShot, testSwing, testClub, testBall, testClimate);
-			Assert::IsTrue(testShot.curveInAir >= (expectedCurve-1.0) && testShot.curveInAir <= (expectedCurve+1.0));
+			Assert::IsTrue(testShot.curveInAir >= (expectedCurve - 1.0) && testShot.curveInAir <= (expectedCurve + 1.0));
 		}
 
 		//Test amount of curve for 10 degree axis tilt
@@ -60,9 +72,6 @@ namespace UnitTest1
 	};
 
 
-	//Test trackman data input against distance output
-	//Criteria: must be within 5% range of error
-	//output of simulation is converted from meters to yards for comparison
 	TEST_CLASS(acceptanceTest1) {
 
 

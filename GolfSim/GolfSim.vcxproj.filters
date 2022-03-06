@@ -62,5 +62,32 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="point.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="climate.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="club.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="swing.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ball.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shot.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="simulator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="loader.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="utilityfunctions.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
