@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CppUnitTest.h"
+#include <time.h>
 
 #include <iostream>
 #include <fstream>
@@ -15,6 +16,10 @@ using std::fstream;
 using std::string;
 using std::vector;
 
+const int screenWidth = 1280, screenHeight = 768;
+const int halfWidth = screenWidth / 2, halfHeight = screenHeight / 2;
+const int mapSizeX = 50, mapSizeZ = 400, mapScale = 25;
+
 #include "..\golfsim\point.h"
 #include "..\golfsim\climate.h"
 #include "..\golfsim\club.h"
@@ -23,6 +28,9 @@ using std::vector;
 #include "..\golfsim\shot.h"
 #include "..\golfSim\utilityfunctions.h"
 #include "..\golfsim\simulator.h"
+#include "..\GolfSim\camera.h"
+camera cam = camera(0.0f, 30.0f, -250.0f, 0.0f);
+#include "..\GolfSim\polygon.h"
 
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -32,7 +40,7 @@ namespace UnitTest01
 	TEST_CLASS(UnitTest01)
 	{
 	public:
-		
+
 		climate testClimate = climate(100.0, 0, 0, 0);
 		ball testBall = ball();
 		club testClub = club();
@@ -91,6 +99,17 @@ namespace UnitTest01
 			shot testShot2 = simulate(testShot, driver, testClub, testBall, testClimate);
 			float expectedMeters = testShot2.carryDist * (1.0 + 5000.0 * .0000116);
 			Assert::AreEqual(testShot.carryDist, expectedMeters, .001F);
+		}
+
+
+		//test to make sure polygon with 0 or negetive depth values is not drawn
+		//this is becuse we cannt divide by 0 and negitive depth values are behind us, and not drawn
+		TEST_METHOD(polyTest1) {
+			polygon testPoly(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -500.0f,0,0,0);
+			testPoly.convert2D();
+			bool test = false;
+			if (testPoly.points2D.empty()) test = true;
+			Assert::IsTrue(test);
 		}
 
 	};
@@ -294,7 +313,7 @@ namespace UnitTest01
 
 			Assert::IsTrue(passed);
 		}
-		
+
 		TEST_METHOD(climateBoundaryHigh) {
 
 			climate testClimateBoundLow = climate(120.1F, 15000.1F, 20.1f, 360.1f);
@@ -309,6 +328,27 @@ namespace UnitTest01
 			Assert::IsTrue(passed);
 		}
 
+
+	};
+
+	//Performance test
+	TEST_CLASS(acceptanceTest3) {
+		climate testClimate = climate(100.0, 0, 0, 0);
+		swing testSwing = swing(83.0, 1.23, 24.2, -5.0, 0.0, 9304.0);
+		ball testBall = ball();
+		club testClub = club();
+		shot testShot = shot();
+
+		TEST_METHOD(performanceTest) {
+			clock_t start, end;
+			start = clock();
+			simulate(testShot, testSwing, testClub, testBall, testClimate);
+			end = clock();
+			Assert::IsTrue(end - start < 500);
+			string a = std::to_string(long (end - start));
+			char* b = _strdup(a.c_str());
+			Logger::WriteMessage(b);
+		}
 
 	};
 }

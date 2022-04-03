@@ -37,7 +37,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 	yVelocity = velocityInit * sin(angleInit);
 
 	//push start position to path
-	shotIn.path3D.emplace_back(point(0.0, 0.0, 0.0));
+	shotIn.path3D.emplace_back(point(0.0, 0.0, 0.0-(mapSizeZ/2.0)));
 
 	while (zVelocity > 0.0) {
 
@@ -106,7 +106,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		//cout << xVelocity << endl;
 
 		//store ball position
-		shotIn.path3D.emplace_back(point(tempX, tempY, tempZ));
+		shotIn.path3D.emplace_back(point(tempX, tempY, tempZ - (mapSizeZ/2.0)));
 		//step time interval
 		time += timeDelta;
 
