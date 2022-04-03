@@ -15,6 +15,9 @@ using std::fstream;
 using std::string;
 using std::vector;
 
+const int screenWidth = 1280, screenHeight = 768;
+const int halfWidth = screenWidth / 2, halfHeight = screenHeight / 2;
+
 #include "..\golfsim\point.h"
 #include "..\golfsim\climate.h"
 #include "..\golfsim\club.h"
@@ -23,6 +26,7 @@ using std::vector;
 #include "..\golfsim\shot.h"
 #include "..\golfSim\utilityfunctions.h"
 #include "..\golfsim\simulator.h"
+#include "..\GolfSim\polygon.h"
 
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -32,7 +36,7 @@ namespace UnitTest01
 	TEST_CLASS(UnitTest01)
 	{
 	public:
-		
+
 		climate testClimate = climate(100.0, 0, 0, 0);
 		ball testBall = ball();
 		club testClub = club();
@@ -91,6 +95,17 @@ namespace UnitTest01
 			shot testShot2 = simulate(testShot, driver, testClub, testBall, testClimate);
 			float expectedMeters = testShot2.carryDist * (1.0 + 5000.0 * .0000116);
 			Assert::AreEqual(testShot.carryDist, expectedMeters, .001F);
+		}
+
+
+		//test to make sure polygon with 0 or negetive depth values is not drawn
+		//this is becuse we cannt divide by 0 and negitive depth values are behind us, and not drawn
+		TEST_METHOD(polyTest1) {
+			polygon testPoly(1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f);
+			testPoly.convert2D();
+			bool test = false;
+			if (testPoly.points2D.empty()) test = true;
+			Assert::IsTrue(test);
 		}
 
 	};
@@ -294,7 +309,7 @@ namespace UnitTest01
 
 			Assert::IsTrue(passed);
 		}
-		
+
 		TEST_METHOD(climateBoundaryHigh) {
 
 			climate testClimateBoundLow = climate(120.1F, 15000.1F, 20.1f, 360.1f);

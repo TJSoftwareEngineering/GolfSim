@@ -4,6 +4,7 @@
 
 const int screenWidth = 1280, screenHeight = 768;
 const int halfWidth = screenWidth / 2, halfHeight = screenHeight / 2;
+const int mapSizeX = 50, mapSizeZ = 400, mapScale = 25;
 
 
 #include <iostream>
@@ -33,8 +34,14 @@ using std::vector;
 #include "utilityfunctions.h"
 #include "simulator.h"
 #include "loader.h"
+
+#include "camera.h"
+camera cam = camera(0.0f, 30.0f, -250.0f, 0.0f);
+
 #include "polygon.h"
 #include "heightmap.h"
+#include "input.h"
+
 
 
 
@@ -43,6 +50,8 @@ using std::vector;
 int main() {
 
 	loadClubData();
+	vector<polygon> heightMap = createHeightMap(50.0f,400.0f,10.0f);
+
 
 	static const char* clubName[]{"Driver","3 Wood","5 Wood","7 Wood", "hybrid","3 Iron","4 Iron","5 Iron" ,"6 Iron" ,"7 Iron" ,"8 Iron" ,"9 Iron", "PW"};
 
@@ -57,7 +66,8 @@ int main() {
 	int selectedClub = 0;
 	int selectedClubNew = 0;
 
-	vector <polygon> polygons;
+	vector <polygon> shotPolygons;
+	vector <polygon> scene;
 
 
 	//Create window
@@ -65,18 +75,6 @@ int main() {
 	ImGui::SFML::Init(window);
 	sf::Clock deltaClock;
 
-	//test shape
-	vector <polygon> testPolygons;
-	testPolygons.emplace_back(polygon(0.0f, 1.0f, 2.0f, 0.0f, 1.0f, 3.0f, 1.0f, 1.0f, 3.0f));
-	testPolygons.emplace_back(polygon(0.0f, 1.0f, 2.0f, 1.0f, 1.0f, 3.0f, 1.0f, 1.0f, 2.0f));
-
-	for (int i = 0; i < testPolygons.size(); i++) {
-		testPolygons[i].convert2D();
-	}
-
-	//sf::CircleShape shape(150.0, 100);
-	//shape.setFillColor(sf::Color(80, 135, 30)); // Color circle
-	//shape.setPosition(200, 100); // Center circle
 
 	// Window render loop
 	while (window.isOpen()) {
@@ -88,6 +86,15 @@ int main() {
 			if (event.type == sf::Event::Closed) {
 				window.close();
 			}
+
+			//keyboard input
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) left = true; else left = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) right = true; else right = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) up = true; else up = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) down = true; else down = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) forward = true; else forward = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) backward = true; else backward = false;
+
 		}
 
 		ImGui::SFML::Update(window, deltaClock.restart());
@@ -113,8 +120,13 @@ int main() {
 		ImGui::Text("\n");
 		ImGui::Separator();
 		ImGui::Text("\n");
+
+		//run simulation on button click
 		if (ImGui::Button("Simulate")) {
 			lastShot = simulate(lastShot, swing1, clubs[0], ball1, climate1);
+			shotPolygons.clear();
+			shotPolygons = makeTrail(lastShot);
+
 		}
 		ImGui::End();
 		//climate window
@@ -147,6 +159,8 @@ int main() {
 		ImGui::Checkbox("Yards", &isYards);
 		ImGui::End();
 
+		//update variables from keyboard input
+		update();
 
 		//see is yards checkbox is checked
 		if (isYards == true) {
@@ -168,52 +182,62 @@ int main() {
 		}
 
 		//clear and draw
-		window.clear(sf::Color(20, 60, 70)); // Color background
+		window.clear(sf::Color(20, 50, 60)); // Color background
 
 		//draw polygon
 
+
+		//after any input, recalculate 2d conversions
+
+
+			for (int i = 0; i < heightMap.size(); i++) {
+				heightMap[i].convert2D();
+			}
+
+
 		//create poly object via convex class
 		sf::ConvexShape convex;
-		convex.setOutlineColor(sf::Color(180, 210, 100));
-		convex.setFillColor(sf::Color(100, 150, 20));
-		convex.setOutlineThickness(1.0f);
+		//convex.setOutlineColor(sf::Color(180, 210, 100));
+		//convex.setFillColor(sf::Color(100, 150, 20));
+		//convex.setOutlineThickness(1.0f);
 		convex.setPointCount(3);
-		for (int i = 0; i < testPolygons.size(); i++) {
 
-			// define the points
-			convex.setPoint(0, sf::Vector2f(int(testPolygons[i].points2D[0].x), int(testPolygons[i].points2D[0].y)));
-			convex.setPoint(1, sf::Vector2f(int(testPolygons[i].points2D[1].x), int(testPolygons[i].points2D[1].y)));
-			convex.setPoint(2, sf::Vector2f(int(testPolygons[i].points2D[2].x), int(testPolygons[i].points2D[2].y)));
+		for (int i = 0; i < heightMap.size(); i++) {
 
-			window.draw(convex);
+			if (heightMap[i].points2D.size() > 0) {
+				convex.setFillColor(sf::Color(heightMap[i].r, heightMap[i].g, heightMap[i].b));
+				// define the points
+				convex.setPoint(0, sf::Vector2f(int(heightMap[i].points2D[0].x), int(heightMap[i].points2D[0].y)));
+				convex.setPoint(1, sf::Vector2f(int(heightMap[i].points2D[1].x), int(heightMap[i].points2D[1].y)));
+				convex.setPoint(2, sf::Vector2f(int(heightMap[i].points2D[2].x), int(heightMap[i].points2D[2].y)));
+
+				window.draw(convex);
+			}
 		}
 
+
+
+			for (int i = 0; i < shotPolygons.size(); i++) {
+				shotPolygons[i].convert2D();
+			}
+
+		for (int i = 0; i < shotPolygons.size(); i++) {
+
+			if (shotPolygons[i].points2D.size() > 0) {
+				convex.setFillColor(sf::Color(shotPolygons[i].r, shotPolygons[i].g, shotPolygons[i].b));
+				// define the points
+				convex.setPoint(0, sf::Vector2f(int(shotPolygons[i].points2D[0].x), int(shotPolygons[i].points2D[0].y)));
+				convex.setPoint(1, sf::Vector2f(int(shotPolygons[i].points2D[1].x), int(shotPolygons[i].points2D[1].y)));
+				convex.setPoint(2, sf::Vector2f(int(shotPolygons[i].points2D[2].x), int(shotPolygons[i].points2D[2].y)));
+
+				window.draw(convex);
+			}
+		}
 
 		//window.draw(shape);
 		ImGui::SFML::Render(window);
 		window.display();
 	}
-
-
-
-	// swing(float speedIn, float smashIn, float launchIn, float angleIn, float pathIn, float spinIn)
-	//driver
-	//swings.emplace_back(swing(113.0, 1.48, 10.9, -1.3, 0.0, 2686.0));
-	//woods
-	//swings.emplace_back(swing(107.0, 1.48, 9.2, -2.9, 0.0, 3655.0));
-	//swings.emplace_back(swing(103.0, 1.47, 9.4, -3.3, 0.0, 4350.0));
-	//swings.emplace_back(swing(101.0, 1.46, 10.0, -3.4, 0.0, 4400.0));
-	//hybrid
-	//swings.emplace_back(swing(100.0, 1.46, 10.2, -3.5, 0.0, 4437.0));
-	//irons
-	//swings.emplace_back(swing(98.0, 1.45, 10.4, -3.1, 0.0, 4630.0));
-	//swings.emplace_back(swing(96.0, 1.43, 11.0, -3.4, 10.0, 4836.0));
-	//swings.emplace_back(swing(94.0, 1.41, 12.1, -3.7, 0.0, 5361.0));
-	//swings.emplace_back(swing(92.0, 1.38, 14.1, -4.1, 0.0, 6231.0));
-	//swings.emplace_back(swing(90.0, 1.33, 16.3, -4.3, 0.0, 7097.0));
-	//swings.emplace_back(swing(87.0, 1.32, 18.1, -4.5, 0.0, 7998.0));
-	//swings.emplace_back(swing(85.0, 1.28, 20.4, -4.7, 0.0, 8647.0));
-	//swings.emplace_back(swing(83.0, 1.23, 24.2, -5.0, 2.0, 9304.0));
 
 
 	ImGui::SFML::Shutdown();
