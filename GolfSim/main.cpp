@@ -4,6 +4,11 @@
 
 const int screenWidth = 1280, screenHeight = 768;
 const int halfWidth = screenWidth / 2, halfHeight = screenHeight / 2;
+const int mapSizeX = 100, mapSizeZ = 600, mapScale = 10;
+
+#include <ctime>
+clock_t start, end;
+clock_t startTest, endTest;
 
 
 #include <iostream>
@@ -33,8 +38,14 @@ using std::vector;
 #include "utilityfunctions.h"
 #include "simulator.h"
 #include "loader.h"
+
+#include "camera.h"
+camera cam = camera(0.0f, 30.0f, -250.0f, 0.0f);
+
 #include "polygon.h"
 #include "heightmap.h"
+#include "input.h"
+
 
 
 
@@ -42,11 +53,17 @@ using std::vector;
 
 int main() {
 
+	startTest = clock();
+	endTest = clock();
+
 	loadClubData();
+	vector<polygon> heightMap = createHeightMap(mapSizeX,mapSizeZ,mapScale);
+	vector<polygon> markers = makeYardMarkers();
+
 
 	static const char* clubName[]{"Driver","3 Wood","5 Wood","7 Wood", "hybrid","3 Iron","4 Iron","5 Iron" ,"6 Iron" ,"7 Iron" ,"8 Iron" ,"9 Iron", "PW"};
 
-	shot shot1, shot2, lastShot;
+	shot shot1, shot2, currentShot, lastShot;
 	climate climate1 = climate(100.0, 0.0, 0.0, 45.0);
 	swing swing1 = swing(120.0, 1.48, 12.0, 0.0, -3.0, 2300.0);
 	ball ball1;
@@ -57,7 +74,11 @@ int main() {
 	int selectedClub = 0;
 	int selectedClubNew = 0;
 
-	vector <polygon> polygons;
+	
+
+
+	vector <polygon> shotPolygons;
+	vector <polygon> scene;
 
 
 	//Create window
@@ -65,18 +86,6 @@ int main() {
 	ImGui::SFML::Init(window);
 	sf::Clock deltaClock;
 
-	//test shape
-	vector <polygon> testPolygons;
-	testPolygons.emplace_back(polygon(0.0f, 1.0f, 2.0f, 0.0f, 1.0f, 3.0f, 1.0f, 1.0f, 3.0f));
-	testPolygons.emplace_back(polygon(0.0f, 1.0f, 2.0f, 1.0f, 1.0f, 3.0f, 1.0f, 1.0f, 2.0f));
-
-	for (int i = 0; i < testPolygons.size(); i++) {
-		testPolygons[i].convert2D();
-	}
-
-	//sf::CircleShape shape(150.0, 100);
-	//shape.setFillColor(sf::Color(80, 135, 30)); // Color circle
-	//shape.setPosition(200, 100); // Center circle
 
 	// Window render loop
 	while (window.isOpen()) {
@@ -88,6 +97,19 @@ int main() {
 			if (event.type == sf::Event::Closed) {
 				window.close();
 			}
+
+			//keyboard input
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) left = true; else left = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) right = true; else right = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) up = true; else up = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) down = true; else down = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) forward = true; else forward = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) backward = true; else backward = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) rotLeft = true; else rotLeft = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) rotRight = true; else rotRight = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) rotUp = true; else rotUp = false;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::F)) rotDown = true; else rotDown = false;
+
 		}
 
 		ImGui::SFML::Update(window, deltaClock.restart());
@@ -105,7 +127,6 @@ int main() {
 		ImGui::Text("\n");
 		ImGui::Separator();
 		ImGui::Text("\nClimate Variables:");
-		ImGui::BulletText("Sections below are demonstrating many aspects of the library.");
 		ImGui::SliderFloat("Temperature (f)", &climate1.temperature, 0.0F, 120.0F);
 		ImGui::SliderFloat("Altitude (ft)", &climate1.altitude, 0.0F, 15000.0F);
 		ImGui::SliderFloat("Wind Speed (m/s)", &climate1.windSpeed, 0.0F, 20.0F);
@@ -113,8 +134,15 @@ int main() {
 		ImGui::Text("\n");
 		ImGui::Separator();
 		ImGui::Text("\n");
+
+		//run simulation on button click
 		if (ImGui::Button("Simulate")) {
-			lastShot = simulate(lastShot, swing1, clubs[0], ball1, climate1);
+			lastShot.path3D.clear();
+			currentShot = simulate(lastShot, swing1, clubs[0], ball1, climate1);
+
+			shotPolygons.clear();
+			shotPolygons = makeTrail(currentShot);
+
 		}
 		ImGui::End();
 		//climate window
@@ -123,30 +151,60 @@ int main() {
 		ImGui::Begin("Stats");
 		ImGui::Text("Distances:\n");
 
-		ImGui::Text("Carry Distance: %f", lastShot.carryDist*unitConvert);
-		ImGui::Text("Total Distance: %f", lastShot.totalDist*unitConvert);
-		ImGui::Text("Ball Speed(mph): %f", lastShot.ballSpeed);
+		ImGui::Text("Carry Distance: %f", currentShot.carryDist*unitConvert);
+		ImGui::Text("Total Distance: %f", currentShot.totalDist*unitConvert);
+		ImGui::Text("Ball Speed(mph): %f", currentShot.ballSpeed);
 		
 		ImGui::Text("\n");
 		ImGui::Separator();
 		ImGui::Text("Wind and Spin:\n");
-		ImGui::Text("Curve (in air): %f", lastShot.curveInAir*unitConvert);
-		ImGui::Text("Curve total: %f", lastShot.curveTotal*unitConvert);
+		ImGui::Text("Curve (in air): %f", currentShot.curveInAir*unitConvert);
+		ImGui::Text("Curve total: %f", currentShot.curveTotal*unitConvert);
 		
 		ImGui::Text("\n");
 		ImGui::Separator();
 		ImGui::Text("Trajectory:\n");
-		ImGui::Text("Max Height: %f", lastShot.maxHeight*unitConvert);
+		ImGui::Text("Max Height: %f", currentShot.maxHeight*unitConvert);
 		ImGui::Text("\n");
 		ImGui::Separator();
 
 		ImGui::Text("Time:\n");
-		ImGui::Text("Flight time (s): %f", lastShot.timeInAir*unitConvert);
-		ImGui::Text("Total time (s): %f", lastShot.timeTotal*unitConvert);
+		ImGui::Text("Flight time (s): %f", currentShot.timeInAir*unitConvert);
+		ImGui::Text("Total time (s): %f", currentShot.timeTotal*unitConvert);
 
 		ImGui::Checkbox("Yards", &isYards);
 		ImGui::End();
 
+		ImGui::Begin("Help");
+		ImGui::Text("Controls:");
+		ImGui::Separator();
+		ImGui::Text("[Q] - Move Left");
+		ImGui::Text("[W] - Move Forward");
+		ImGui::Text("[E] - Move Right");
+		ImGui::Text("[A] - Turn Left");
+		ImGui::Text("[S] - Move Backward");
+		ImGui::Text("[D] - Turn Right");
+		ImGui::Text("[R] - Turn up");
+		ImGui::Text("[W] - Turn Down");
+		ImGui::Text("[Up Arrow] - Move up");
+		ImGui::Text("[Down Arrow] - Move Down");
+		ImGui::Text("\n\n");
+		ImGui::Text("Notes:");
+		ImGui::Separator();
+		ImGui::Text("Grid");
+		ImGui::Text("The Grid is 100m wide x 600m long.");
+		ImGui::Text("Yardage marker lines are placed every 100m.");
+		ImGui::Text("Each square of the grid represents a 10x10m area.");
+		ImGui::Separator();
+		ImGui::Text("Wind");
+		ImGui::Text("Wind angle is represented in degrees.");
+		ImGui::Text("0deg = right    90deg = tailwind  ");
+		ImGui::Text("180deg = left   270deg = headwind");
+		ImGui::End();
+
+
+		//update variables from keyboard input
+		update();
 
 		//see is yards checkbox is checked
 		if (isYards == true) {
@@ -168,52 +226,73 @@ int main() {
 		}
 
 		//clear and draw
-		window.clear(sf::Color(20, 60, 70)); // Color background
+		window.clear(sf::Color(20, 50, 60)); // Color background
 
-		//draw polygon
 
-		//create poly object via convex class
-		sf::ConvexShape convex;
-		convex.setOutlineColor(sf::Color(180, 210, 100));
-		convex.setFillColor(sf::Color(100, 150, 20));
-		convex.setOutlineThickness(1.0f);
-		convex.setPointCount(3);
-		for (int i = 0; i < testPolygons.size(); i++) {
+		sf::VertexArray triangleArray(sf::Triangles);
 
-			// define the points
-			convex.setPoint(0, sf::Vector2f(int(testPolygons[i].points2D[0].x), int(testPolygons[i].points2D[0].y)));
-			convex.setPoint(1, sf::Vector2f(int(testPolygons[i].points2D[1].x), int(testPolygons[i].points2D[1].y)));
-			convex.setPoint(2, sf::Vector2f(int(testPolygons[i].points2D[2].x), int(testPolygons[i].points2D[2].y)));
+		//window.draw(triangleArray);
 
-			window.draw(convex);
+		//convert heightmap polygons from 3D to 2D
+		for (int i = 0; i < heightMap.size(); i++) {
+			heightMap[i].convert2D();
 		}
 
+		for (int i = 0; i < heightMap.size(); i++) {
+
+			if (heightMap[i].points2D.size() > 0) {
+
+				//add heightmap polygons to drawing array
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(heightMap[i].points2D[0].x), int(heightMap[i].points2D[0].y)), sf::Color(heightMap[i].r, heightMap[i].g, heightMap[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(heightMap[i].points2D[1].x), int(heightMap[i].points2D[1].y)), sf::Color(heightMap[i].r, heightMap[i].g, heightMap[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(heightMap[i].points2D[2].x), int(heightMap[i].points2D[2].y)), sf::Color(heightMap[i].r, heightMap[i].g, heightMap[i].b)));
+
+			}
+		}
+
+
+		//convert marker polygons from 3D to 2D
+		for (int i = 0; i < markers.size(); i++) {
+			markers[i].convert2D();
+		}
+
+		for (int i = 0; i < markers.size(); i++) {
+
+			if (markers[i].points2D.size() > 0) {
+
+				//add marker polygons to drawing array
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(markers[i].points2D[0].x), int(markers[i].points2D[0].y)), sf::Color(markers[i].r, markers[i].g, markers[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(markers[i].points2D[1].x), int(markers[i].points2D[1].y)), sf::Color(markers[i].r, markers[i].g, markers[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(markers[i].points2D[2].x), int(markers[i].points2D[2].y)), sf::Color(markers[i].r, markers[i].g, markers[i].b)));
+
+			}
+		}
+
+
+
+		//convert shot polygons from 3D to 2D
+		for (int i = 0; i < shotPolygons.size(); i++) {
+			shotPolygons[i].convert2D();
+		}
+
+		for (int i = 0; i < shotPolygons.size(); i++) {
+
+			if (shotPolygons[i].points2D.size() > 0) {
+
+				//add shot trail polygons to drawing array
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(shotPolygons[i].points2D[0].x), int(shotPolygons[i].points2D[0].y)), sf::Color(shotPolygons[i].r, shotPolygons[i].g, shotPolygons[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(shotPolygons[i].points2D[1].x), int(shotPolygons[i].points2D[1].y)), sf::Color(shotPolygons[i].r, shotPolygons[i].g, shotPolygons[i].b)));
+				triangleArray.append(sf::Vertex(sf::Vector2f(int(shotPolygons[i].points2D[2].x), int(shotPolygons[i].points2D[2].y)), sf::Color(shotPolygons[i].r, shotPolygons[i].g, shotPolygons[i].b)));
+
+			}
+		}
+
+		window.draw(triangleArray);
 
 		//window.draw(shape);
 		ImGui::SFML::Render(window);
 		window.display();
 	}
-
-
-
-	// swing(float speedIn, float smashIn, float launchIn, float angleIn, float pathIn, float spinIn)
-	//driver
-	//swings.emplace_back(swing(113.0, 1.48, 10.9, -1.3, 0.0, 2686.0));
-	//woods
-	//swings.emplace_back(swing(107.0, 1.48, 9.2, -2.9, 0.0, 3655.0));
-	//swings.emplace_back(swing(103.0, 1.47, 9.4, -3.3, 0.0, 4350.0));
-	//swings.emplace_back(swing(101.0, 1.46, 10.0, -3.4, 0.0, 4400.0));
-	//hybrid
-	//swings.emplace_back(swing(100.0, 1.46, 10.2, -3.5, 0.0, 4437.0));
-	//irons
-	//swings.emplace_back(swing(98.0, 1.45, 10.4, -3.1, 0.0, 4630.0));
-	//swings.emplace_back(swing(96.0, 1.43, 11.0, -3.4, 10.0, 4836.0));
-	//swings.emplace_back(swing(94.0, 1.41, 12.1, -3.7, 0.0, 5361.0));
-	//swings.emplace_back(swing(92.0, 1.38, 14.1, -4.1, 0.0, 6231.0));
-	//swings.emplace_back(swing(90.0, 1.33, 16.3, -4.3, 0.0, 7097.0));
-	//swings.emplace_back(swing(87.0, 1.32, 18.1, -4.5, 0.0, 7998.0));
-	//swings.emplace_back(swing(85.0, 1.28, 20.4, -4.7, 0.0, 8647.0));
-	//swings.emplace_back(swing(83.0, 1.23, 24.2, -5.0, 2.0, 9304.0));
 
 
 	ImGui::SFML::Shutdown();

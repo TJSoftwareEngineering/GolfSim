@@ -8,7 +8,6 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 	float degToRad = 3.1415926 / 180.0;
 	float velocityInit = swingIn.ballSpeed * .44704;
 	shotIn.ballSpeed = swingIn.ballSpeed;
-	//float angleInitDeg = (cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack*2.0);
 	float angleInitDeg = swingIn.launchAngle;
 	float angleInit = angleInitDeg * degToRad;
 
@@ -37,7 +36,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 	yVelocity = velocityInit * sin(angleInit);
 
 	//push start position to path
-	shotIn.path3D.emplace_back(point(0.0, 0.0, 0.0));
+	shotIn.path3D.emplace_back(point(0.0, 0.0, 0.0-(mapSizeZ/2.0)));
 
 	while (zVelocity > 0.0) {
 
@@ -83,15 +82,12 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		windForceX = .5 * climateIn.windSpeed * coDrag * cos(climateIn.windDirection * degToRad);
 		windForceZ = .5 * climateIn.windSpeed * coDrag * sin(climateIn.windDirection * degToRad);
 		spinForceX = sin(swingIn.spinAxis * degToRad) * 18.0;
-		//cout << spinForceX << endl;
 
 		if (bounce == true) {
 			windForceX *= .5;
 			spinForceX *= .5;
 			windForceZ = 0.0;
 		}
-
-		//cout << windForceX << "," << windForceZ << endl;
 
 
 		//Calculate velocity change
@@ -103,10 +99,9 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		yVelocity += yChange * timeDelta / ballIn.massKG;
 		xVelocity = windForceX + spinForceX;
 
-		//cout << xVelocity << endl;
 
 		//store ball position
-		shotIn.path3D.emplace_back(point(tempX, tempY, tempZ));
+		shotIn.path3D.emplace_back(point(tempX, tempY, tempZ - (mapSizeZ/2.0)));
 		//step time interval
 		time += timeDelta;
 
@@ -114,13 +109,11 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		if (tempY > heightMax) {
 			heightMax = tempY;
 		}
-		cout << tempZ << "," << tempY << "," << tempX << endl;
+		
 	}
 
 	//create and return stats
-
 	totalDist = tempZ;
-	//cout << "strike distance: " << strikeDist << endl;
 	shotIn.curveTotal = tempX;
 	shotIn.maxHeight = heightMax;
 	shotIn.timeTotal = time;

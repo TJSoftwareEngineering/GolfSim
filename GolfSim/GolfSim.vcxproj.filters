@@ -89,13 +89,16 @@
     <ClInclude Include="utilityfunctions.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="rasterizer.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="polygon.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="heightmap.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="input.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

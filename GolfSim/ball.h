@@ -6,8 +6,8 @@ public:
 	float massKG = .0456;
 	float massG = 45.6;
 	float area = 3.14159265 * (radM * radM);
-	float coLift = .54;//.45
-	float coDrag = .48;//.63
+	float coLift = .54;
+	float coDrag = .48;
 	float coRestY = .34;
 	float coRestX = .87;
 	float spin = 0.0;

@@ -30,7 +30,6 @@ void loadClubData() {
 			path = std::stof(line);
 			getline(fin, line, '\n');
 			spin = std::stof(line);
-			//cout << name << " " << loft << " " << smash << " " << spin << " " << endl;
 			clubs.emplace_back(club(name, speed, smash, launch, attack, path, spin));
 			titles.emplace_back(name);
 		}
