@@ -8,7 +8,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 	float degToRad = 3.1415926 / 180.0;
 	float velocityInit = swingIn.ballSpeed * .44704;
 	shotIn.ballSpeed = swingIn.ballSpeed;
-	//float angleInitDeg = (cos(clubIn.loft * degToRad) * clubIn.loft + clubIn.attack*2.0);
+
 	float angleInitDeg = swingIn.launchAngle;
 	float angleInit = angleInitDeg * degToRad;
 
@@ -83,7 +83,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		windForceX = .5 * climateIn.windSpeed * coDrag * cos(climateIn.windDirection * degToRad);
 		windForceZ = .5 * climateIn.windSpeed * coDrag * sin(climateIn.windDirection * degToRad);
 		spinForceX = sin(swingIn.spinAxis * degToRad) * 18.0;
-		//cout << spinForceX << endl;
+
 
 		if (bounce == true) {
 			windForceX *= .5;
@@ -91,7 +91,6 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 			windForceZ = 0.0;
 		}
 
-		//cout << windForceX << "," << windForceZ << endl;
 
 
 		//Calculate velocity change
@@ -103,7 +102,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 		yVelocity += yChange * timeDelta / ballIn.massKG;
 		xVelocity = windForceX + spinForceX;
 
-		//cout << xVelocity << endl;
+
 
 		//store ball position
 		shotIn.path3D.emplace_back(point(tempX, tempY, tempZ - (mapSizeZ/2.0)));
@@ -118,9 +117,7 @@ shot simulate(shot shotIn, swing swingIn, club clubIn, ball ballIn, climate clim
 	}
 
 	//create and return stats
-
 	totalDist = tempZ;
-	//cout << "strike distance: " << strikeDist << endl;
 	shotIn.curveTotal = tempX;
 	shotIn.maxHeight = heightMax;
 	shotIn.timeTotal = time;
